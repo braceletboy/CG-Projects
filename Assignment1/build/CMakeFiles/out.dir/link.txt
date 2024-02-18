@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/out.dir/src/PA1_Draft.cpp.o CMakeFiles/out.dir/src/Tools.cpp.o -o out  /usr/lib/x86_64-linux-gnu/libOpenGL.so /usr/lib/x86_64-linux-gnu/libGLX.so /usr/lib/x86_64-linux-gnu/libGLU.so /usr/lib/x86_64-linux-gnu/libglut.so /usr/lib/x86_64-linux-gnu/libXi.so 
