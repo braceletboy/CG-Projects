@@ -47,8 +47,8 @@ void fillPolygon(ShadedPolygon polygon)
                 polygon.drawConfig.fillColors[0].a
             );
         }
-        glVertex2i(polygon.vertices[i].x, 
-                    polygon.vertices[i].y);
+        glVertex2i((int)polygon.vertices[i].x, 
+                    (int)polygon.vertices[i].y);
     }
     glEnd();
     glDisable(GL_POLYGON_STIPPLE);
@@ -64,8 +64,8 @@ void drawPolygonBorder(ShadedPolygon polygon)
     for (int i = 0; i < polygon.numVertices; i++)
     {
         glColor4f(1.0, 1.0, 1.0, 1.0);
-        glVertex2i(polygon.vertices[i].x,
-                    polygon.vertices[i].y);
+        glVertex2i((int)polygon.vertices[i].x,
+                    (int)polygon.vertices[i].y);
     }
     glEnd();
 
@@ -99,8 +99,8 @@ void drawPolygonBorder(ShadedPolygon polygon)
                 polygon.drawConfig.borderColors[0].a
             );
         }
-        glVertex2i(polygon.vertices[i].x,
-                    polygon.vertices[i].y);
+        glVertex2i((int)polygon.vertices[i].x,
+                    (int)polygon.vertices[i].y);
     }
     glEnd();
     glDisable(GL_LINE_STIPPLE);
@@ -108,19 +108,33 @@ void drawPolygonBorder(ShadedPolygon polygon)
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
 
-
+/**
+ * @brief Return the boundaries of the rectangle that contains the polygon
+ * 
+ * @param polygon The polygon
+ * @param xFrom The starting x-coordinate of the rectangle
+ * @param xTo The ending x-coordinate of the rectangle
+ * @param yFrom The starting y-coordinate of the rectangle
+ * @param yTo The ending y-coordinate of the rectangele
+ */
 void polygonContainingRectangle(
-    ShadedPolygon* polygons, int polygonIndex,
-    double* xFrom, double* xTo, double* yFrom, double* yTo
+    ShadedPolygon &polygon,
+    double &xFrom, double &xTo, double &yFrom, double &yTo
 )
 {
-    int i = 0;
     double xMin = 1000000, yMin = 1000000, xMax = -1000000, yMax = -1000000;
-    double tcos = cos(polygons[polygonIndex].rtheta * PI / 180), tsin = sin(polygons[polygonIndex].rtheta * PI / 180);
-    int xc = polygons[polygonIndex].centroidX, yc = polygons[polygonIndex].centroidY;
-    while (polygons[polygonIndex].vertices[i].x >= 0) {
-        double x = (polygons[polygonIndex].vertices[i].x - xc) * tcos - (polygons[polygonIndex].vertices[i].y - yc) * tsin
-            , y = (polygons[polygonIndex].vertices[i].x - xc) * tsin + (polygons[polygonIndex].vertices[i].y - yc) * tcos;
+    double tcos = cos(polygon.rtheta * PI / 180);
+    double tsin = sin(polygon.rtheta * PI / 180);
+    double xc = polygon.centroidX;
+    double yc = polygon.centroidY;
+
+    // find relative boundaries of the rectangle with respect to center
+    for (int i = 0; i < polygon.numVertices; i++)
+    {
+        double x = (polygon.vertices[i].x - xc) * tcos -
+                    (polygon.vertices[i].y - yc) * tsin;
+        double y = (polygon.vertices[i].x - xc) * tsin +
+                    (polygon.vertices[i].y - yc) * tcos;
         if (x > xMax)
             xMax = x;
         if (y > yMax)
@@ -129,49 +143,63 @@ void polygonContainingRectangle(
             xMin = x;
         if (y < yMin)
             yMin = y;
-        i++;
     }
-    *xFrom = xMin * polygons[polygonIndex].sx;
-    *yFrom = yMin * polygons[polygonIndex].sy;
-    *xTo = xMax * polygons[polygonIndex].sx;
-    *yTo = yMax * polygons[polygonIndex].sy;
+
+    // update the relative boundaries to account for scaling
+    xMin = xMin * polygon.sx;
+    yMin = yMin * polygon.sy;
+    xMax = xMax * polygon.sx;
+    yMax = yMax * polygon.sy;
+
+    xFrom = xc + xMin;
+    yFrom = yc + yMin;
+    xTo = xc + xMax;
+    yFrom = yc + yMax;
 }
 
 
 void polygonCentroidApprox(ShadedPolygon &polygon)
 {
-    int i = 0;
-    double xAvg = 0, yAvg = 0;
-    while (polygon.vertices[i].x >= 0) {
-        xAvg += polygon.vertices[i].x;
-        yAvg += polygon.vertices[i].y;
-        i++;
+    double xSum = 0, ySum = 0;
+    for(int idx = 0; idx < polygon.numVertices; idx++)
+    {
+        xSum += polygon.vertices[idx].x;
+        ySum += polygon.vertices[idx].y;
     }
-    xAvg /= i;
-    yAvg /= i;
-    polygon.centroidX = xAvg;
-    polygon.centroidY = yAvg;
+    polygon.centroidX = xSum/polygon.numVertices;
+    polygon.centroidY = ySum/polygon.numVertices;
 }
 
 
 void polygonCentroidAccurate(ShadedPolygon &polygon)
 {
-    float centroidX = 0, centroidY = 0, det = 0, tempDet = 0;
-    int i = 0, j = 0;
-    while (polygon.vertices[i].x >= 0) {
-        if (polygon.vertices[i + 1].x < 0)
-            j = 0;
-        else
-            j = i + 1;
-        tempDet = polygon.vertices[i].x * polygon.vertices[j].y
-            - polygon.vertices[j].x * polygon.vertices[i].y;
-        det += tempDet;
-        centroidX += (polygon.vertices[i].x + polygon.vertices[j].x) * tempDet;
-        centroidY += (polygon.vertices[i].y + polygon.vertices[j].y) * tempDet;
-        i++;
+    double totalArea = 0, centroidSumX = 0, centroidSumY = 0;
+    for(int idx = 1; idx < polygon.numVertices-1; idx++)
+    {
+        double triangleArea = abs(
+            0.5 * (
+                (polygon.vertices[0].x*polygon.vertices[idx].y -
+                 polygon.vertices[idx].x*polygon.vertices[0].y) +
+                (polygon.vertices[idx].x*polygon.vertices[idx+1].y -
+                 polygon.vertices[idx+1].x*polygon.vertices[idx].y) +
+                (polygon.vertices[idx+1].x*polygon.vertices[0].y -
+                 polygon.vertices[0].x*polygon.vertices[idx+1].y)
+            )
+        );
+        double triangleCentroidX = (
+            polygon.vertices[0].x +
+            polygon.vertices[idx].x +
+            polygon.vertices[idx+1].x
+        )/3.0;
+        double triangleCentroidY = (
+            polygon.vertices[0].y +
+            polygon.vertices[idx].y +
+            polygon.vertices[idx+1].y
+        )/3.0;
+        centroidSumX += triangleArea*triangleCentroidX;
+        centroidSumY += triangleArea*triangleCentroidY;
+        totalArea += triangleArea;
     }
-    centroidX /= 3 * det;
-    centroidY /= 3 * det;
-    polygon.centroidX = centroidX;
-    polygon.centroidY = centroidY;
+    polygon.centroidX = centroidSumX/totalArea;
+    polygon.centroidY = centroidSumY/totalArea;
 }

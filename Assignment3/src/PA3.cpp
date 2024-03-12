@@ -3,10 +3,6 @@
 #include <string>
 #include <GL/glut.h>
 #include "global.h"
-#define X_MAX 600
-#define Y_MAX 400
-#define X_POSITION 200
-#define Y_POSITION 200
 
 using namespace std;
 
@@ -37,21 +33,21 @@ ShadedPolygon currentPolygon = {.numVertices=0};  // polygon being drawn
  * 
  */
 void init() {
-
-    glClearColor(1.0, 1.0, 1.0, 1.0);
+    glClearColor(1.0, 1.0, 1.0, 1.0);  // choose white for background color
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluOrtho2D(0, X_MAX, 0, Y_MAX);
+    gluOrtho2D(0, X_MAX, 0, Y_MAX);  // 2D projection
+
     glEnable(GL_POINT_SMOOTH);
     glHint(GL_POINT_SMOOTH_HINT, GL_NICEST);
     glEnable(GL_LINE_SMOOTH);
     glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     glEnable(GL_POLYGON_SMOOTH);
     glHint(GL_POLYGON_SMOOTH_HINT, GL_NICEST);
+
+    // by default blend using the source alpha for the blending factors
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
 }
 
 /**
@@ -60,7 +56,10 @@ void init() {
  */
 void display(void)
 {
-    glClear(GL_COLOR_BUFFER_BIT);
+    // apply transformations to the Modelview matrix
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    glClear(GL_COLOR_BUFFER_BIT);  // set background to choosen color
     int rx, ry;
     for (int polygonIndex = 0; polygonIndex < polygonCount; polygonIndex++)
     {
@@ -68,7 +67,7 @@ void display(void)
         glPushMatrix();  // push a new model view matrix onto the stack
         glTranslatef(rx, ry, 0);  // translate the centroid back to original
         glTranslatef(polygons[polygonIndex].tx, polygons[polygonIndex].ty, 0);  // translate polygon
-        glScalef(polygons[polygonIndex].sx, polygons[polygonIndex].sy, 1);  // scale polygon
+        // glScalef(polygons[polygonIndex].sx, polygons[polygonIndex].sy, 1);  // scale polygon
         glRotatef(polygons[polygonIndex].rtheta, 0.0, 0.0, 1.0);  // rotate polygon
         glTranslatef(-rx, -ry, 0);  // translate the centroid to origin
         fillPolygon(polygons[polygonIndex]);
@@ -91,21 +90,21 @@ void onMouseMove(int x, int y)
     y = (glutGet(GLUT_WINDOW_HEIGHT) - y) * (float)Y_MAX / glutGet(GLUT_WINDOW_HEIGHT);
     x = x * ((float)X_MAX / glutGet(GLUT_WINDOW_WIDTH));
 
-    // erase previous line from latest polygon point to previous cursor loc
+    // erase previous line from recent polygon point to previous cursor loc
     if(drawing)
     {
         glBlendFunc(GL_ONE, GL_ZERO);
-        glColor4f(1.0, 1.0, 1.0, 1.0);
+        glColor4f(1.0, 1.0, 1.0, 1.0);  // background is white
         glBegin(GL_LINE_STRIP);
-            glVertex2i(previousMouseLoc[0], previousMouseLoc[1]);
             glVertex2i(
                 currentPolygon.vertices[currentPolygon.numVertices - 1].x,
                 currentPolygon.vertices[currentPolygon.numVertices - 1].y
             );
+            glVertex2i(previousMouseLoc[0], previousMouseLoc[1]);
         glEnd();
     }
 
-    // draw new line from latest polygon point to current cursor loc
+    // draw new line from recent polygon point to current cursor loc
     glColor4f(borderDrawColor.r, borderDrawColor.g,
                 borderDrawColor.b, borderDrawColor.a);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -122,9 +121,23 @@ void onMouseMove(int x, int y)
     drawing = true;
 }
 
+/**
+ * @brief Callback function when a mouse button is pressed
+ * 
+ * @param button The button which was pressed - right, middle or left
+ * @param state The state of the button - up or down
+ * @param x The x-coordinate of the mouse pointer
+ * @param y The y-coordinate of the mouse pointer
+ * 
+ * @note The x and y coordinates are measured from the top leftcorner of the
+ * drawable area in the window
+ */
+
 void onMouseClick(int button, int state, int x, int y)
 {
     recentMouseButton = button;
+
+    // compute coordinates from bottom left corner
     y = (glutGet(GLUT_WINDOW_HEIGHT) - y) * (float)Y_MAX / glutGet(GLUT_WINDOW_HEIGHT);
     x = x * ((float)X_MAX / glutGet(GLUT_WINDOW_WIDTH));
 
@@ -181,6 +194,11 @@ Color askColor()
     return color;
 }
 
+/**
+ * @brief Ask the user to input the movement configuration
+ * 
+ * @return MovementConfig 
+ */
 MovementConfig askMoveConfig()
 {
     MovementConfig config;
@@ -256,14 +274,7 @@ ShadedPolygonDrawConfig askDrawConfig()
     string bcp;
     cout << "Choose border coloring pattern (solid / gradient): ";
     cin >> bcp;
-    if (bcp == "solid")
-    {
-        polyConfig.borderColorPattern = ColorPattern::SOLIDCOLOR;
-        polyConfig.numBorderColors = 1;
-        cout << "Single Solid Color ";
-        polyConfig.borderColors[0] = askColor();
-    }
-    else if(bcp == "gradient")
+    if(bcp == "gradient")
     {
         polyConfig.borderColorPattern = ColorPattern::GRADIENTCOLOR;
         cout << "Number of border colors: ";
@@ -274,17 +285,20 @@ ShadedPolygonDrawConfig askDrawConfig()
             polyConfig.borderColors[idx] = askColor();
         }
     }
+    else
+    {
+        polyConfig.borderColorPattern = ColorPattern::SOLIDCOLOR;
+        polyConfig.numBorderColors = 1;
+        cout << "Single Solid Color ";
+        polyConfig.borderColors[0] = askColor();
+    }
 
     // choose fill pattern
     string fp;
     cout<<"Choose fill pattern (solid / fly / hatched / halftone): ";
     cin >> fp;
 
-    if(fp == "solid")
-    {
-        polyConfig.fillPattern = FillPattern::SOLID;
-    }
-    else if (fp == "fly")
+    if (fp == "fly")
     {
         polyConfig.fillPattern = FillPattern::FLY;
     }
@@ -296,19 +310,16 @@ ShadedPolygonDrawConfig askDrawConfig()
     {
         polyConfig.fillPattern = FillPattern::HALFTONE;
     }
+    else
+    {
+        polyConfig.fillPattern = FillPattern::SOLID;
+    }
 
     // choose fill coloring pattern
     string fcp;
     cout << "Choose fill coloring pattern (solid / gradient): ";
     cin >> fcp;
-
-    if (fcp == "solid")
-    {
-        polyConfig.fillColorPattern = ColorPattern::SOLIDCOLOR;
-        cout << "Single Solid Color ";
-        polyConfig.fillColors[0] = askColor();
-    }
-    else if (fcp == "gradient")
+    if (fcp == "gradient")
     {
         polyConfig.fillColorPattern = ColorPattern::GRADIENTCOLOR;
         cout << "Number of fill colors: ";
@@ -319,10 +330,18 @@ ShadedPolygonDrawConfig askDrawConfig()
             polyConfig.fillColors[idx] = askColor();
         }
     }
+    else
+    {
+        polyConfig.fillColorPattern = ColorPattern::SOLIDCOLOR;
+        cout << "Single Solid Color ";
+        polyConfig.fillColors[0] = askColor();
+    }
     return polyConfig;
 }
 
-void transform(void) {
+
+void transform()
+{
     double xFrom, xTo, yFrom, yTo;
     for (int i = 0; i < polygonCount;i++) {
         // update orientation
@@ -353,90 +372,90 @@ void transform(void) {
             polygons[i].moveConfig.mode & DOWN
         )? -polygons[i].moveConfig.ySpeed :0;
 
-        // update horizontal motion
-        if (polygons[i].sx >= 1.0 && 
-            (polygons[i].moveConfig.mode & HOR_GROWTH))
-        {
-            polygons[i].moveConfig.mode = polygons[i].moveConfig.pastMode;
-            polygons[i].moveConfig.mode = (Movement)(
-                polygons[i].moveConfig.mode ^
-                (CW_ROTATE | CCW_ROTATE | LEFT | RIGHT)
-            );
-            continue;
-        }
-        if (polygons[i].sx < (1 - polygons[i].moveConfig.shrinkFactor) &&
-            (polygons[i].moveConfig.mode & HOR_SHRINK))
-        {
-            polygons[i].moveConfig.mode = HOR_GROWTH;
-            continue;
-        }
+        // // update horizontal motion
+        // if (polygons[i].sx >= 1.0 && 
+        //     (polygons[i].moveConfig.mode & HOR_GROWTH))
+        // {
+        //     polygons[i].moveConfig.mode = polygons[i].moveConfig.pastMode;
+        //     polygons[i].moveConfig.mode = (Movement)(
+        //         polygons[i].moveConfig.mode ^
+        //         (CW_ROTATE | CCW_ROTATE | LEFT | RIGHT)
+        //     );
+        //     continue;
+        // }
+        // if (polygons[i].sx < (1 - polygons[i].moveConfig.shrinkFactor) &&
+        //     (polygons[i].moveConfig.mode & HOR_SHRINK))
+        // {
+        //     polygons[i].moveConfig.mode = HOR_GROWTH;
+        //     continue;
+        // }
 
-        // update vertical motion
-        if (polygons[i].sy >= 1.0 && 
-            (polygons[i].moveConfig.mode & VERT_GROWTH))
-        {
-            polygons[i].moveConfig.mode = polygons[i].moveConfig.pastMode;
-            polygons[i].moveConfig.mode = (Movement)(
-                polygons[i].moveConfig.mode ^
-                (CW_ROTATE | CCW_ROTATE | UP | DOWN)
-            );
-            continue;
-        }
-        if (polygons[i].sy < (1 - polygons[i].moveConfig.shrinkFactor) &&
-            (polygons[i].moveConfig.mode & VERT_SHRINK))
-        {
-            polygons[i].moveConfig.mode = VERT_GROWTH;
-            continue;
-        }
+        // // update vertical motion
+        // if (polygons[i].sy >= 1.0 && 
+        //     (polygons[i].moveConfig.mode & VERT_GROWTH))
+        // {
+        //     polygons[i].moveConfig.mode = polygons[i].moveConfig.pastMode;
+        //     polygons[i].moveConfig.mode = (Movement)(
+        //         polygons[i].moveConfig.mode ^
+        //         (CW_ROTATE | CCW_ROTATE | UP | DOWN)
+        //     );
+        //     continue;
+        // }
+        // if (polygons[i].sy < (1 - polygons[i].moveConfig.shrinkFactor) &&
+        //     (polygons[i].moveConfig.mode & VERT_SHRINK))
+        // {
+        //     polygons[i].moveConfig.mode = VERT_GROWTH;
+        //     continue;
+        // }
 
-        // update shrink
-        polygonContainingRectangle(polygons, i, &xFrom, &xTo, &yFrom, &yTo);
-        if (polygons[i].moveConfig.mode & HOR_SHRINK)
-        {
-            polygons[i].tx += (polygons[i].moveConfig.pastMode & RIGHT) ?
-                xTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sx
-                : xFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sx;
-            polygons[i].sx -= 1 / polygons[i].moveConfig.bouncePeriod;
-            continue;
-        }
-        if (polygons[i].moveConfig.mode & HOR_GROWTH)
-        {
-            polygons[i].tx -= (polygons[i].moveConfig.pastMode & RIGHT) ?
-                xTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sx
-                : xFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sx;
-            polygons[i].sx += 1 / polygons[i].moveConfig.bouncePeriod;
-            continue;
-        }
-        if (polygons[i].moveConfig.mode & VERT_SHRINK)
-        {
-            polygons[i].ty += (polygons[i].moveConfig.pastMode & UP) ?
-                yTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sy
-                : yFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sy;
-            polygons[i].sy -= 1 / polygons[i].moveConfig.bouncePeriod;
-            continue;
-        }
-        if (polygons[i].moveConfig.mode & VERT_GROWTH)
-        {
-            polygons[i].ty -= (polygons[i].moveConfig.pastMode & UP) ?
-                yTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sy
-                : yFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sy;
-            polygons[i].sy += 1 / polygons[i].moveConfig.bouncePeriod;
-            continue;
-        }
-        if (polygons[i].tx + polygons[i].centroidX + xTo >= X_MAX  // hit the right border
-            || polygons[i].tx + polygons[i].centroidX + xFrom <= 0)  // hit the left border
-        {
-            polygons[i].moveConfig.pastMode = polygons[i].moveConfig.mode;
-            polygons[i].moveConfig.mode = HOR_SHRINK ;
-            continue;
-        }
-        if (polygons[i].ty + polygons[i].centroidY + yTo >= Y_MAX  // hit the top border
-            || polygons[i].ty + polygons[i].centroidY + yFrom <= 0)  // hit the bottom border 
-        {
-            polygons[i].moveConfig.pastMode = polygons[i].moveConfig.mode;
-            polygons[i].moveConfig.mode = VERT_SHRINK;
-            continue;
-        }
+        // // update shrink
+        // polygonContainingRectangle(polygons, i, &xFrom, &xTo, &yFrom, &yTo);
+        // if (polygons[i].moveConfig.mode & HOR_SHRINK)
+        // {
+        //     polygons[i].tx += (polygons[i].moveConfig.pastMode & RIGHT) ?
+        //         xTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sx
+        //         : xFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sx;
+        //     polygons[i].sx -= 1 / polygons[i].moveConfig.bouncePeriod;
+        //     continue;
+        // }
+        // if (polygons[i].moveConfig.mode & HOR_GROWTH)
+        // {
+        //     polygons[i].tx -= (polygons[i].moveConfig.pastMode & RIGHT) ?
+        //         xTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sx
+        //         : xFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sx;
+        //     polygons[i].sx += 1 / polygons[i].moveConfig.bouncePeriod;
+        //     continue;
+        // }
+        // if (polygons[i].moveConfig.mode & VERT_SHRINK)
+        // {
+        //     polygons[i].ty += (polygons[i].moveConfig.pastMode & UP) ?
+        //         yTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sy
+        //         : yFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sy;
+        //     polygons[i].sy -= 1 / polygons[i].moveConfig.bouncePeriod;
+        //     continue;
+        // }
+        // if (polygons[i].moveConfig.mode & VERT_GROWTH)
+        // {
+        //     polygons[i].ty -= (polygons[i].moveConfig.pastMode & UP) ?
+        //         yTo / polygons[i].moveConfig.bouncePeriod / polygons[i].sy
+        //         : yFrom / polygons[i].moveConfig.bouncePeriod / polygons[i].sy;
+        //     polygons[i].sy += 1 / polygons[i].moveConfig.bouncePeriod;
+        //     continue;
+        // }
+        // if (polygons[i].tx + polygons[i].centroidX + xTo >= X_MAX  // hit the right border
+        //     || polygons[i].tx + polygons[i].centroidX + xFrom <= 0)  // hit the left border
+        // {
+        //     polygons[i].moveConfig.pastMode = polygons[i].moveConfig.mode;
+        //     polygons[i].moveConfig.mode = HOR_SHRINK ;
+        //     continue;
+        // }
+        // if (polygons[i].ty + polygons[i].centroidY + yTo >= Y_MAX  // hit the top border
+        //     || polygons[i].ty + polygons[i].centroidY + yFrom <= 0)  // hit the bottom border 
+        // {
+        //     polygons[i].moveConfig.pastMode = polygons[i].moveConfig.mode;
+        //     polygons[i].moveConfig.mode = VERT_SHRINK;
+        //     continue;
+        // }
     }
     glutPostRedisplay();  // call the display function to update the display
 }
@@ -481,12 +500,12 @@ int main()
     glutInitWindowSize(2*X_MAX, 2*Y_MAX);
     glutInitWindowPosition(X_POSITION, Y_POSITION);
 
-    //start setting up a display window
+    // start setting up a display window
     glutCreateWindow("Screen Saver Window");
     init();
     glutDisplayFunc(display);
 
-    //finish setting up a display window
+    // finish setting up a display window
     glutMotionFunc(onMouseMove);
     glutMouseFunc(onMouseClick);
     glutKeyboardFunc(onKeystroke);

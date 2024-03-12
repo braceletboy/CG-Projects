@@ -46,7 +46,7 @@ Color;
 
 typedef struct
 {
-    int x, y;
+    double x, y;
 }
 Vertex;
 
@@ -83,7 +83,7 @@ typedef struct
 {
     int numVertices;  // total number of vertices in the polygon
 
-    int centroidX, centroidY;
+    double centroidX, centroidY;
     double tx = 0, ty = 0,  // shift vector
            rtheta = 0,  // rotation angle
            sx = 1, sy = 1;  // scale factor
