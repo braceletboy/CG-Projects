@@ -131,10 +131,14 @@ void polygonContainingRectangle(
     // find boundaries of the polygon
     for (int i = 0; i < polygon.numVertices; i++)
     {
-        double x = + polygon.tx + xc + ((polygon.vertices[i].x - xc) * tcos -
-                    (polygon.vertices[i].y - yc) * tsin);
-        double y = polygon.ty + yc + ((polygon.vertices[i].x - xc) * tsin +
-                    (polygon.vertices[i].y - yc) * tcos);
+        double x = + polygon.tx + xc + polygon.sx * (
+            (polygon.vertices[i].x - xc) * tcos -
+            (polygon.vertices[i].y - yc) * tsin
+        );
+        double y = polygon.ty + yc + polygon.sy * (
+            (polygon.vertices[i].x - xc) * tsin +
+            (polygon.vertices[i].y - yc) * tcos
+        );
         if (x > xTo)
             xTo = x;
         if (y > yTo)

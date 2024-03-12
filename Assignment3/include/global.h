@@ -95,11 +95,6 @@ typedef struct
 }
 ShadedPolygon;
 
-void polygonCentroid2(int polygonIndex, int* x, int* y);
-void polygonContainingRectangle(
-    int polygonIndex, double* xFrom, double* xTo, double* yFrom, double* yTo);
-void drawPolygon(int polygonIndex);
-
 static GLubyte fly[] = {
     //1024 bits or 128 bytes - represents a fill mask
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

@@ -56,18 +56,6 @@ void init() {
  */
 void display(void)
 {
-    // draw borders
-    glBlendFunc(GL_ONE, GL_ZERO);
-    glLineWidth(30);
-    glColor4f(0, 0, 0, 1);
-    glBegin(GL_LINE_LOOP);
-        glVertex2i(0, 0);
-        glVertex2i(X_MAX, 0);
-        glVertex2i(X_MAX, Y_MAX);
-        glVertex2i(0, Y_MAX);
-    glEnd();
-    glFlush();
-
     // apply transformations to the Modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -79,7 +67,7 @@ void display(void)
         glPushMatrix();  // push a new model view matrix onto the stack
         glTranslatef(polygons[polygonIndex].tx, polygons[polygonIndex].ty, 0);  // translate polygon
         glTranslatef(rx, ry, 0);  // translate the centroid back to original
-        // glScalef(polygons[polygonIndex].sx, polygons[polygonIndex].sy, 1);  // scale polygon
+        glScalef(polygons[polygonIndex].sx, polygons[polygonIndex].sy, 1);  // scale polygon
         glRotatef(polygons[polygonIndex].rtheta, 0.0, 0.0, 1.0);  // rotate polygon
         glTranslatef(-rx, -ry, 0);  // translate the centroid to origin
         fillPolygon(polygons[polygonIndex]);
@@ -356,120 +344,233 @@ ShadedPolygonDrawConfig askDrawConfig()
 
 void transform()
 {
-    for (int i = 0; i < polygonCount;i++)
+    for (int polygonIndex = 0; polygonIndex < polygonCount; polygonIndex++)
     {
         // calculate next time step attributes of the polygon in temp variable
-        ShadedPolygon tempPolygon = polygons[i];
+        ShadedPolygon tempPolygon = polygons[polygonIndex];
 
         // update orientation
         tempPolygon.rtheta += (
-            polygons[i].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
-        ) ? polygons[i].moveConfig.rotSpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::CW_ROTATE)
-        ) ? -polygons[i].moveConfig.rotSpeed : 0;
+            tempPolygon.moveConfig.mode & ((uint)Movement::CCW_ROTATE)
+        ) ? tempPolygon.moveConfig.rotSpeed : (
+            tempPolygon.moveConfig.mode & ((uint)Movement::CW_ROTATE)
+        ) ? -tempPolygon.moveConfig.rotSpeed : 0;
 
         // check for out of bound values and correct it
         tempPolygon.rtheta += (
-            polygons[i].rtheta > 360
+            tempPolygon.rtheta > 360
         ) ? -360 : (
-            polygons[i].rtheta < 0
+            tempPolygon.rtheta < 0
         ) ? 360 : 0;
 
         // update x-position
         tempPolygon.tx += (
-            polygons[i].moveConfig.mode & ((uint)Movement::RIGHT)
-        ) ? polygons[i].moveConfig.xSpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::LEFT)
-        ) ? -polygons[i].moveConfig.xSpeed : 0;
+            tempPolygon.moveConfig.mode & ((uint)Movement::RIGHT)
+        ) ? tempPolygon.moveConfig.xSpeed : (
+            tempPolygon.moveConfig.mode & ((uint)Movement::LEFT)
+        ) ? -tempPolygon.moveConfig.xSpeed : 0;
 
         // update y-position
         tempPolygon.ty += (
-            polygons[i].moveConfig.mode & ((uint)Movement::UP)
-        ) ? polygons[i].moveConfig.ySpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::DOWN)
-        )? -polygons[i].moveConfig.ySpeed :0;
+            tempPolygon.moveConfig.mode & ((uint)Movement::UP)
+        ) ? tempPolygon.moveConfig.ySpeed : (
+            tempPolygon.moveConfig.mode & ((uint)Movement::DOWN)
+        ) ? -tempPolygon.moveConfig.ySpeed : 0;
+
+        // update horizontal scaling
+        tempPolygon.sx += (
+            tempPolygon.moveConfig.mode & ((uint)Movement::HOR_GROWTH)
+        ) ? (2 / tempPolygon.moveConfig.bouncePeriod *
+                tempPolygon.moveConfig.shrinkFactor) : (
+            tempPolygon.moveConfig.mode & ((uint)Movement::HOR_SHRINK)
+        ) ? -(2 / tempPolygon.moveConfig.bouncePeriod *
+                tempPolygon.moveConfig.shrinkFactor) : 0;
+
+        // update vertical scaling
+        tempPolygon.sy += (
+            tempPolygon.moveConfig.mode & ((uint)Movement::VERT_GROWTH)
+        ) ? (2 / tempPolygon.moveConfig.bouncePeriod *
+                tempPolygon.moveConfig.shrinkFactor) : (
+            tempPolygon.moveConfig.mode & ((uint)Movement::VERT_SHRINK)
+        ) ? -(2 / tempPolygon.moveConfig.bouncePeriod *
+                tempPolygon.moveConfig.shrinkFactor) : 0;
 
         // check for collision with the window edges
-        bool collided = false;
+        bool changeRotation = false;
         double xFrom, xTo, yFrom, yTo;
         polygonContainingRectangle(tempPolygon, xFrom, xTo, yFrom, yTo);
-        if(xFrom <= 0)
+        if(xFrom <= 0)  // left side collision
         {
-            if(polygons[i].moveConfig.mode & ((uint)Movement::LEFT))
+            if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_SHRINK))
             {
-                // change motion to right
-                polygons[i].moveConfig.mode &= ~(uint)Movement::LEFT;
-                polygons[i].moveConfig.mode ^= (uint)Movement::RIGHT;
-            }
-            collided = true;
-        }
-        if(xTo >= X_MAX)
-        {
-            if(polygons[i].moveConfig.mode & (uint)Movement::RIGHT)
-            {
-                // change motion to right
-                polygons[i].moveConfig.mode &= ~(uint)Movement::RIGHT;
-                polygons[i].moveConfig.mode ^= (uint)Movement::LEFT;
-            }
-            collided = true;
-        }
-        if(yFrom <= 0)
-        {
-            if(polygons[i].moveConfig.mode & (uint)Movement::DOWN)
-            {
-                // change motion to right
-                polygons[i].moveConfig.mode &= ~(uint)Movement::DOWN;
-                polygons[i].moveConfig.mode ^= (uint)Movement::UP;
-            }
-            collided = true;
-        }
-        if(yTo >= Y_MAX)
-        {
-            if(polygons[i].moveConfig.mode & (uint)Movement::UP)
-            {
-                // change motion to right
-                polygons[i].moveConfig.mode &= ~(uint)Movement::UP;
-                polygons[i].moveConfig.mode ^= (uint)Movement::DOWN;
-            }
-            collided = true;
-        }
+                if(tempPolygon.sx < (1-tempPolygon.moveConfig.shrinkFactor))
+                {
+                    // start the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_SHRINK;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_GROWTH;
 
-        // flip rotation due to collision(s)
-        if(collided)
-        {
-            if(polygons[i].moveConfig.mode & (uint)Movement::CW_ROTATE)
+                    // change motion to right
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::LEFT;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::RIGHT;
+                    changeRotation = true;
+                }
+            }
+            else if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_GROWTH))
             {
-                polygons[i].moveConfig.mode &= ~(uint)Movement::CW_ROTATE;
-                polygons[i].moveConfig.mode ^= (uint)Movement::CCW_ROTATE;
+                if(tempPolygon.sx > 1)
+                {
+                    // stop the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_GROWTH;
+                }
             }
             else
             {
-                polygons[i].moveConfig.mode &= ~(uint)Movement::CCW_ROTATE;
-                polygons[i].moveConfig.mode ^= (uint)Movement::CW_ROTATE;
+                // start the shrink phase
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_SHRINK;
+            }
+        }
+        if(xTo >= X_MAX)  // right side collision
+        {
+            if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_SHRINK))
+            {
+                if(tempPolygon.sx < (1-tempPolygon.moveConfig.shrinkFactor))
+                {
+                    // start the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_SHRINK;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_GROWTH;
+
+                    // change motion to left
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::RIGHT;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::LEFT;
+                    changeRotation = true;
+                }
+            }
+            else if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_GROWTH))
+            {
+                if(tempPolygon.sx > 1)
+                {
+                    // stop the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_GROWTH;
+                }
+            }
+            else
+            {
+                // start the shrink phase
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_SHRINK;
+            }
+        }
+        if(yFrom <= 0)  // bottom collision
+        {
+            if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_SHRINK))
+            {
+                if(tempPolygon.sy < (1-tempPolygon.moveConfig.shrinkFactor))
+                {
+                    // start the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_SHRINK;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_GROWTH;
+
+                    // change motion to up
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::DOWN;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::UP;
+                    changeRotation = true;
+                }
+            }
+            else if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_GROWTH))
+            {
+                if(tempPolygon.sy > 1)
+                {
+                    // stop the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_GROWTH;
+                }
+            }
+            else
+            {
+                // start the shrink phase
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_SHRINK;
+            }
+        }
+        if(yTo >= Y_MAX)  // top collision
+        {
+            if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_SHRINK))
+            {
+                if(tempPolygon.sy < (1-tempPolygon.moveConfig.shrinkFactor))
+                {
+                    // start the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_SHRINK;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_GROWTH;
+
+                    // change motion to down
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::UP;
+                    polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::DOWN;
+                    changeRotation = true;
+                }
+            }
+            else if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_GROWTH))
+            {
+                if(tempPolygon.sy > 1)
+                {
+                    // stop the growth phase
+                    polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_GROWTH;
+                }
+            }
+            else
+            {
+                // start the shrink phase
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_SHRINK;
+            }
+        }
+
+        // flip rotation due to collision(s)
+        if(changeRotation)
+        {
+            if(tempPolygon.moveConfig.mode & (uint)Movement::CW_ROTATE)
+            {
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::CW_ROTATE;
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::CCW_ROTATE;
+            }
+            else
+            {
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::CCW_ROTATE;
+                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::CW_ROTATE;
             }
         }
 
         // actual update of the polygon
-        polygons[i].rtheta += (
-            polygons[i].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
-        ) ? polygons[i].moveConfig.rotSpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::CW_ROTATE)
-        ) ? -polygons[i].moveConfig.rotSpeed : 0;
-        polygons[i].rtheta += (
-            polygons[i].rtheta > 360
+        polygons[polygonIndex].rtheta += (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
+        ) ? polygons[polygonIndex].moveConfig.rotSpeed : (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CW_ROTATE)
+        ) ? -polygons[polygonIndex].moveConfig.rotSpeed : 0;
+        polygons[polygonIndex].rtheta += (
+            polygons[polygonIndex].rtheta > 360
         ) ? -360 : (
-            polygons[i].rtheta < 0
+            polygons[polygonIndex].rtheta < 0
         ) ? 360 : 0;
-        polygons[i].tx += (
-            polygons[i].moveConfig.mode & ((uint)Movement::RIGHT)
-        ) ? polygons[i].moveConfig.xSpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::LEFT)
-        ) ? -polygons[i].moveConfig.xSpeed : 0;
-        polygons[i].ty += (
-            polygons[i].moveConfig.mode & ((uint)Movement::UP)
-        ) ? polygons[i].moveConfig.ySpeed : (
-            polygons[i].moveConfig.mode & ((uint)Movement::DOWN)
-        )? -polygons[i].moveConfig.ySpeed : 0;
+        polygons[polygonIndex].tx += (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::RIGHT)
+        ) ? polygons[polygonIndex].moveConfig.xSpeed : (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::LEFT)
+        ) ? -polygons[polygonIndex].moveConfig.xSpeed : 0;
+        polygons[polygonIndex].ty += (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::UP)
+        ) ? polygons[polygonIndex].moveConfig.ySpeed : (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::DOWN)
+        )? -polygons[polygonIndex].moveConfig.ySpeed : 0;
+        polygons[polygonIndex].sx += (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
+        ) ? (2 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                polygons[polygonIndex].moveConfig.shrinkFactor) : (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
+        ) ? -(2 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                polygons[polygonIndex].moveConfig.shrinkFactor) : 0;
+        polygons[polygonIndex].sy += (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
+        ) ? (2 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                polygons[polygonIndex].moveConfig.shrinkFactor) : (
+            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
+        ) ? -(2 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                polygons[polygonIndex].moveConfig.shrinkFactor) : 0;
+
     }
     glutPostRedisplay();  // call the display function to update the display
 }
