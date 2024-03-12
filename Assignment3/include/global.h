@@ -52,8 +52,8 @@ Vertex;
 
 typedef struct
 {
-    int mode = 0;  // current movement
-    int pastMode = 0;  // movement before bouncing
+    uint mode = 0;  // current movement
+    uint pastMode = 0;  // movement before bouncing
 
     double xSpeed;
     double ySpeed;

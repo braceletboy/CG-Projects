@@ -9,8 +9,8 @@ using namespace std;
 void fillPolygon(ShadedPolygon currentPolygon);
 void drawPolygonBorder(ShadedPolygon currentPolygon);
 void polygonContainingRectangle(
-    ShadedPolygon* polygons, int polygonIndex,
-    double* xFrom, double* xTo, double* yFrom, double* yTo
+    ShadedPolygon &polygons,
+    double &xFrom, double &xTo, double &yFrom, double &yTo
 );
 
 void polygonCentroidApprox(ShadedPolygon &polygons);
@@ -47,7 +47,7 @@ void init() {
 
     // by default blend using the source alpha for the blending factors
     glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ZERO);
 }
 
 /**
@@ -56,6 +56,18 @@ void init() {
  */
 void display(void)
 {
+    // draw borders
+    glBlendFunc(GL_ONE, GL_ZERO);
+    glLineWidth(30);
+    glColor4f(0, 0, 0, 1);
+    glBegin(GL_LINE_LOOP);
+        glVertex2i(0, 0);
+        glVertex2i(X_MAX, 0);
+        glVertex2i(X_MAX, Y_MAX);
+        glVertex2i(0, Y_MAX);
+    glEnd();
+    glFlush();
+
     // apply transformations to the Modelview matrix
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
@@ -65,8 +77,8 @@ void display(void)
     {
         rx = polygons[polygonIndex].centroidX, ry = polygons[polygonIndex].centroidY;
         glPushMatrix();  // push a new model view matrix onto the stack
-        glTranslatef(rx, ry, 0);  // translate the centroid back to original
         glTranslatef(polygons[polygonIndex].tx, polygons[polygonIndex].ty, 0);  // translate polygon
+        glTranslatef(rx, ry, 0);  // translate the centroid back to original
         // glScalef(polygons[polygonIndex].sx, polygons[polygonIndex].sy, 1);  // scale polygon
         glRotatef(polygons[polygonIndex].rtheta, 0.0, 0.0, 1.0);  // rotate polygon
         glTranslatef(-rx, -ry, 0);  // translate the centroid to origin
@@ -75,6 +87,7 @@ void display(void)
         glPopMatrix(); //pops the top modelview matrix on the matrix stacks
     }
     glFlush();
+    glMatrixMode(GL_PROJECTION);
 }
 
 void onMouseMove(int x, int y)
@@ -91,6 +104,7 @@ void onMouseMove(int x, int y)
     x = x * ((float)X_MAX / glutGet(GLUT_WINDOW_WIDTH));
 
     // erase previous line from recent polygon point to previous cursor loc
+    glLineWidth(1);
     if(drawing)
     {
         glBlendFunc(GL_ONE, GL_ZERO);
@@ -107,7 +121,7 @@ void onMouseMove(int x, int y)
     // draw new line from recent polygon point to current cursor loc
     glColor4f(borderDrawColor.r, borderDrawColor.g,
                 borderDrawColor.b, borderDrawColor.a);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendFunc(GL_ONE, GL_ZERO);
     glBegin(GL_LINE_STRIP);
         glVertex2i(
             currentPolygon.vertices[currentPolygon.numVertices - 1].x,
@@ -208,11 +222,11 @@ MovementConfig askMoveConfig()
 
     if(mvmnt == "ccw")
     {
-        config.mode ^= Movement::CCW_ROTATE;
+        config.mode ^= (uint)Movement::CCW_ROTATE;
     }
     else
     {
-        config.mode ^= Movement::CW_ROTATE;
+        config.mode ^= (uint)Movement::CW_ROTATE;
     }
 
     cout << "Choose rotation speed: ";
@@ -223,8 +237,8 @@ MovementConfig askMoveConfig()
 
     if (mvmnt == "left-up")
     {
-        config.mode ^= Movement::LEFT;
-        config.mode ^= Movement::UP;
+        config.mode ^= (uint)Movement::LEFT;
+        config.mode ^= (uint)Movement::UP;
     }
     else if (mvmnt == "right-down")
     {
@@ -233,13 +247,13 @@ MovementConfig askMoveConfig()
     }
     else if (mvmnt == "left-down")
     {
-        config.mode ^= Movement::LEFT;
-        config.mode ^= Movement::DOWN;
+        config.mode ^= (uint)Movement::LEFT;
+        config.mode ^= (uint)Movement::DOWN;
     }
     else
     {
-        config.mode ^= Movement::RIGHT;
-        config.mode ^= Movement::UP;
+        config.mode ^= (uint)Movement::RIGHT;
+        config.mode ^= (uint)Movement::UP;
     }
 
     cout << "Choose horizontal speed: ";
@@ -342,35 +356,120 @@ ShadedPolygonDrawConfig askDrawConfig()
 
 void transform()
 {
-    double xFrom, xTo, yFrom, yTo;
-    for (int i = 0; i < polygonCount;i++) {
+    for (int i = 0; i < polygonCount;i++)
+    {
+        // calculate next time step attributes of the polygon in temp variable
+        ShadedPolygon tempPolygon = polygons[i];
+
         // update orientation
-        polygons[i].rtheta += (
-            polygons[i].moveConfig.mode & CCW_ROTATE
+        tempPolygon.rtheta += (
+            polygons[i].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
         ) ? polygons[i].moveConfig.rotSpeed : (
-            polygons[i].moveConfig.mode & CW_ROTATE
+            polygons[i].moveConfig.mode & ((uint)Movement::CW_ROTATE)
         ) ? -polygons[i].moveConfig.rotSpeed : 0;
 
         // check for out of bound values and correct it
-        polygons[i].rtheta += (
+        tempPolygon.rtheta += (
             polygons[i].rtheta > 360
         ) ? -360 : (
             polygons[i].rtheta < 0
         ) ? 360 : 0;
 
         // update x-position
-        polygons[i].tx += (
-            polygons[i].moveConfig.mode & RIGHT
+        tempPolygon.tx += (
+            polygons[i].moveConfig.mode & ((uint)Movement::RIGHT)
         ) ? polygons[i].moveConfig.xSpeed : (
-            polygons[i].moveConfig.mode & LEFT
+            polygons[i].moveConfig.mode & ((uint)Movement::LEFT)
         ) ? -polygons[i].moveConfig.xSpeed : 0;
 
         // update y-position
-        polygons[i].ty += (
-            polygons[i].moveConfig.mode & UP
+        tempPolygon.ty += (
+            polygons[i].moveConfig.mode & ((uint)Movement::UP)
         ) ? polygons[i].moveConfig.ySpeed : (
-            polygons[i].moveConfig.mode & DOWN
+            polygons[i].moveConfig.mode & ((uint)Movement::DOWN)
         )? -polygons[i].moveConfig.ySpeed :0;
+
+        // check for collision with the window edges
+        bool collided = false;
+        double xFrom, xTo, yFrom, yTo;
+        polygonContainingRectangle(tempPolygon, xFrom, xTo, yFrom, yTo);
+        if(xFrom <= 0)
+        {
+            if(polygons[i].moveConfig.mode & ((uint)Movement::LEFT))
+            {
+                // change motion to right
+                polygons[i].moveConfig.mode &= ~(uint)Movement::LEFT;
+                polygons[i].moveConfig.mode ^= (uint)Movement::RIGHT;
+            }
+            collided = true;
+        }
+        if(xTo >= X_MAX)
+        {
+            if(polygons[i].moveConfig.mode & (uint)Movement::RIGHT)
+            {
+                // change motion to right
+                polygons[i].moveConfig.mode &= ~(uint)Movement::RIGHT;
+                polygons[i].moveConfig.mode ^= (uint)Movement::LEFT;
+            }
+            collided = true;
+        }
+        if(yFrom <= 0)
+        {
+            if(polygons[i].moveConfig.mode & (uint)Movement::DOWN)
+            {
+                // change motion to right
+                polygons[i].moveConfig.mode &= ~(uint)Movement::DOWN;
+                polygons[i].moveConfig.mode ^= (uint)Movement::UP;
+            }
+            collided = true;
+        }
+        if(yTo >= Y_MAX)
+        {
+            if(polygons[i].moveConfig.mode & (uint)Movement::UP)
+            {
+                // change motion to right
+                polygons[i].moveConfig.mode &= ~(uint)Movement::UP;
+                polygons[i].moveConfig.mode ^= (uint)Movement::DOWN;
+            }
+            collided = true;
+        }
+
+        // flip rotation due to collision(s)
+        if(collided)
+        {
+            if(polygons[i].moveConfig.mode & (uint)Movement::CW_ROTATE)
+            {
+                polygons[i].moveConfig.mode &= ~(uint)Movement::CW_ROTATE;
+                polygons[i].moveConfig.mode ^= (uint)Movement::CCW_ROTATE;
+            }
+            else
+            {
+                polygons[i].moveConfig.mode &= ~(uint)Movement::CCW_ROTATE;
+                polygons[i].moveConfig.mode ^= (uint)Movement::CW_ROTATE;
+            }
+        }
+
+        // actual update of the polygon
+        polygons[i].rtheta += (
+            polygons[i].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
+        ) ? polygons[i].moveConfig.rotSpeed : (
+            polygons[i].moveConfig.mode & ((uint)Movement::CW_ROTATE)
+        ) ? -polygons[i].moveConfig.rotSpeed : 0;
+        polygons[i].rtheta += (
+            polygons[i].rtheta > 360
+        ) ? -360 : (
+            polygons[i].rtheta < 0
+        ) ? 360 : 0;
+        polygons[i].tx += (
+            polygons[i].moveConfig.mode & ((uint)Movement::RIGHT)
+        ) ? polygons[i].moveConfig.xSpeed : (
+            polygons[i].moveConfig.mode & ((uint)Movement::LEFT)
+        ) ? -polygons[i].moveConfig.xSpeed : 0;
+        polygons[i].ty += (
+            polygons[i].moveConfig.mode & ((uint)Movement::UP)
+        ) ? polygons[i].moveConfig.ySpeed : (
+            polygons[i].moveConfig.mode & ((uint)Movement::DOWN)
+        )? -polygons[i].moveConfig.ySpeed : 0;
 
         // // update horizontal motion
         // if (polygons[i].sx >= 1.0 && 

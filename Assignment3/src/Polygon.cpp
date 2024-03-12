@@ -122,39 +122,28 @@ void polygonContainingRectangle(
     double &xFrom, double &xTo, double &yFrom, double &yTo
 )
 {
-    double xMin = 1000000, yMin = 1000000, xMax = -1000000, yMax = -1000000;
+    xFrom = 1000000, yFrom = 1000000, xTo = -1000000, yTo = -1000000;
     double tcos = cos(polygon.rtheta * PI / 180);
     double tsin = sin(polygon.rtheta * PI / 180);
     double xc = polygon.centroidX;
     double yc = polygon.centroidY;
 
-    // find relative boundaries of the rectangle with respect to center
+    // find boundaries of the polygon
     for (int i = 0; i < polygon.numVertices; i++)
     {
-        double x = (polygon.vertices[i].x - xc) * tcos -
-                    (polygon.vertices[i].y - yc) * tsin;
-        double y = (polygon.vertices[i].x - xc) * tsin +
-                    (polygon.vertices[i].y - yc) * tcos;
-        if (x > xMax)
-            xMax = x;
-        if (y > yMax)
-            yMax = y;
-        if (x < xMin)
-            xMin = x;
-        if (y < yMin)
-            yMin = y;
+        double x = + polygon.tx + xc + ((polygon.vertices[i].x - xc) * tcos -
+                    (polygon.vertices[i].y - yc) * tsin);
+        double y = polygon.ty + yc + ((polygon.vertices[i].x - xc) * tsin +
+                    (polygon.vertices[i].y - yc) * tcos);
+        if (x > xTo)
+            xTo = x;
+        if (y > yTo)
+            yTo = y;
+        if (x < xFrom)
+            xFrom = x;
+        if (y < yFrom)
+            yFrom = y;
     }
-
-    // update the relative boundaries to account for scaling
-    xMin = xMin * polygon.sx;
-    yMin = yMin * polygon.sy;
-    xMax = xMax * polygon.sx;
-    yMax = yMax * polygon.sy;
-
-    xFrom = xc + xMin;
-    yFrom = yc + yMin;
-    xTo = xc + xMax;
-    yFrom = yc + yMax;
 }
 
 
