@@ -342,7 +342,7 @@ ShadedPolygonDrawConfig askDrawConfig()
 }
 
 
-void transform()
+void transformMine()
 {
     for (int polygonIndex = 0; polygonIndex < polygonCount; polygonIndex++)
     {
@@ -396,14 +396,14 @@ void transform()
                 tempPolygon.moveConfig.shrinkFactor) : 0;
 
         // check for collision with the window edges
-        bool changeRotation = false;
+        bool colliding = false;
         double xFrom, xTo, yFrom, yTo;
         polygonContainingRectangle(tempPolygon, xFrom, xTo, yFrom, yTo);
         if(xFrom <= 0)  // left side collision
         {
             if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_SHRINK))
             {
-                if(tempPolygon.sx < (1-tempPolygon.moveConfig.shrinkFactor))
+                if(tempPolygon.sx <= (1-tempPolygon.moveConfig.shrinkFactor))
                 {
                     // start the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_SHRINK;
@@ -412,28 +412,30 @@ void transform()
                     // change motion to right
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::LEFT;
                     polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::RIGHT;
-                    changeRotation = true;
                 }
+                colliding = true;
             }
             else if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_GROWTH))
             {
-                if(tempPolygon.sx > 1)
+                if(tempPolygon.sx >= 1)
                 {
                     // stop the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_GROWTH;
                 }
+                colliding = false;
             }
             else
             {
                 // start the shrink phase
                 polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_SHRINK;
+                colliding = true;
             }
         }
-        if(xTo >= X_MAX)  // right side collision
+        else if(xTo >= X_MAX)  // right side collision
         {
             if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_SHRINK))
             {
-                if(tempPolygon.sx < (1-tempPolygon.moveConfig.shrinkFactor))
+                if(tempPolygon.sx <= (1-tempPolygon.moveConfig.shrinkFactor))
                 {
                     // start the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_SHRINK;
@@ -442,28 +444,45 @@ void transform()
                     // change motion to left
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::RIGHT;
                     polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::LEFT;
-                    changeRotation = true;
+                    colliding = true;
                 }
             }
             else if(tempPolygon.moveConfig.mode & ((uint)Movement::HOR_GROWTH))
             {
-                if(tempPolygon.sx > 1)
+                if(tempPolygon.sx >= 1)
                 {
                     // stop the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_GROWTH;
+                    colliding = false;
                 }
             }
             else
             {
                 // start the shrink phase
                 polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::HOR_SHRINK;
+                colliding = true;
+            }
+        }
+        else
+        {
+            if(tempPolygon.sx >= 1)
+            {
+                // stop the growth phase
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_GROWTH;
+                colliding = false;
+            }
+            else if (tempPolygon.sx <= (1-tempPolygon.moveConfig.shrinkFactor))
+            {
+                // stop the shrink phase
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::HOR_SHRINK;
+                colliding = false;
             }
         }
         if(yFrom <= 0)  // bottom collision
         {
             if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_SHRINK))
             {
-                if(tempPolygon.sy < (1-tempPolygon.moveConfig.shrinkFactor))
+                if(tempPolygon.sy <= (1-tempPolygon.moveConfig.shrinkFactor))
                 {
                     // start the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_SHRINK;
@@ -472,28 +491,30 @@ void transform()
                     // change motion to up
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::DOWN;
                     polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::UP;
-                    changeRotation = true;
+                    colliding = true;
                 }
             }
             else if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_GROWTH))
             {
-                if(tempPolygon.sy > 1)
+                if(tempPolygon.sy >= 1)
                 {
                     // stop the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_GROWTH;
+                    colliding = false;
                 }
             }
             else
             {
                 // start the shrink phase
                 polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_SHRINK;
+                colliding = true;
             }
         }
-        if(yTo >= Y_MAX)  // top collision
+        else if(yTo >= Y_MAX)  // top collision
         {
             if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_SHRINK))
             {
-                if(tempPolygon.sy < (1-tempPolygon.moveConfig.shrinkFactor))
+                if(tempPolygon.sy <= (1-tempPolygon.moveConfig.shrinkFactor))
                 {
                     // start the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_SHRINK;
@@ -502,50 +523,56 @@ void transform()
                     // change motion to down
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::UP;
                     polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::DOWN;
-                    changeRotation = true;
+                    colliding = true;
                 }
             }
             else if(tempPolygon.moveConfig.mode & ((uint)Movement::VERT_GROWTH))
             {
-                if(tempPolygon.sy > 1)
+                if(tempPolygon.sy >= 1)
                 {
                     // stop the growth phase
                     polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_GROWTH;
+                    colliding = false;
                 }
             }
             else
             {
                 // start the shrink phase
                 polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::VERT_SHRINK;
+                colliding = true;
             }
         }
-
-        // flip rotation due to collision(s)
-        if(changeRotation)
+        else
         {
-            if(tempPolygon.moveConfig.mode & (uint)Movement::CW_ROTATE)
+            if(tempPolygon.sy >= 1)
             {
-                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::CW_ROTATE;
-                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::CCW_ROTATE;
+                // stop the growth phase
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_GROWTH;
+                colliding = false;
             }
-            else
+            else if (tempPolygon.sy <= (1-tempPolygon.moveConfig.shrinkFactor))
             {
-                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::CCW_ROTATE;
-                polygons[polygonIndex].moveConfig.mode ^= (uint)Movement::CW_ROTATE;
+                // stop the shrink phase
+                polygons[polygonIndex].moveConfig.mode &= ~(uint)Movement::VERT_SHRINK;
+                colliding = false;
             }
         }
 
         // actual update of the polygon
-        polygons[polygonIndex].rtheta += (
-            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
-        ) ? polygons[polygonIndex].moveConfig.rotSpeed : (
-            polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CW_ROTATE)
-        ) ? -polygons[polygonIndex].moveConfig.rotSpeed : 0;
-        polygons[polygonIndex].rtheta += (
-            polygons[polygonIndex].rtheta > 360
-        ) ? -360 : (
-            polygons[polygonIndex].rtheta < 0
-        ) ? 360 : 0;
+        if (~colliding)
+        {
+            // don't rotate when colliding
+            polygons[polygonIndex].rtheta += (
+                polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CCW_ROTATE)
+            ) ? polygons[polygonIndex].moveConfig.rotSpeed : (
+                polygons[polygonIndex].moveConfig.mode & ((uint)Movement::CW_ROTATE)
+            ) ? -polygons[polygonIndex].moveConfig.rotSpeed : 0;
+            polygons[polygonIndex].rtheta += (
+                polygons[polygonIndex].rtheta > 360
+            ) ? -360 : (
+                polygons[polygonIndex].rtheta < 0
+            ) ? 360 : 0;
+        }
         polygons[polygonIndex].tx += (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::RIGHT)
         ) ? polygons[polygonIndex].moveConfig.xSpeed : (
@@ -556,21 +583,79 @@ void transform()
         ) ? polygons[polygonIndex].moveConfig.ySpeed : (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::DOWN)
         )? -polygons[polygonIndex].moveConfig.ySpeed : 0;
+        if (colliding)
+        {
+            if(xFrom <= 0)
+            {
+                polygons[polygonIndex].tx += (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
+                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (polygons[polygonIndex].centroidX - xFrom) : (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
+                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (polygons[polygonIndex].centroidX - xFrom) : 0;
+            }
+            else if (xTo >= X_MAX)
+            {
+                polygons[polygonIndex].tx += (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
+                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (xTo - polygons[polygonIndex].centroidX) : (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
+                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (xTo - polygons[polygonIndex].centroidX) : 0;
+            }
+            if (yFrom <= 0)
+            {
+                polygons[polygonIndex].ty += (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
+                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (polygons[polygonIndex].centroidY - yFrom) : (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
+                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (polygons[polygonIndex].centroidY - yFrom) : 0;
+            }
+            else if (yTo >= Y_MAX)
+            {
+                polygons[polygonIndex].ty += (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
+                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (yTo - polygons[polygonIndex].centroidY) : (
+                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
+                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
+                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
+                        (yTo - polygons[polygonIndex].centroidY) : 0;
+            }
+        }
+
         polygons[polygonIndex].sx += (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
         ) ? (2 / polygons[polygonIndex].moveConfig.bouncePeriod *
                 polygons[polygonIndex].moveConfig.shrinkFactor) : (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
         ) ? -(2 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                polygons[polygonIndex].moveConfig.shrinkFactor) : 0;
+                polygons[polygonIndex].moveConfig.shrinkFactor) : (
+            1 - polygons[polygonIndex].sx
+        );
         polygons[polygonIndex].sy += (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
         ) ? (2 / polygons[polygonIndex].moveConfig.bouncePeriod *
                 polygons[polygonIndex].moveConfig.shrinkFactor) : (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
         ) ? -(2 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                polygons[polygonIndex].moveConfig.shrinkFactor) : 0;
+                polygons[polygonIndex].moveConfig.shrinkFactor) : (
+            1 - polygons[polygonIndex].sy
+        );
 
+        polygons[polygonIndex].sx = max(min(polygons[polygonIndex].sx, 1.0), 0.0);
+        polygons[polygonIndex].sy = max(min(polygons[polygonIndex].sy, 1.0), 0.0);
     }
     glutPostRedisplay();  // call the display function to update the display
 }
@@ -587,23 +672,29 @@ void onKeystroke(unsigned char key, int x, int y) {
         else
         {
             cout << "Staring animation" << endl;
-            glutIdleFunc(transform);
+            glutIdleFunc(transformMine);
         }
         animating = !animating;
     }
-    else if (key == 'c')
+    else if (key == 'd')
     {
-        cout << "\nThe 'c' key was pressed - ";
+        cout << "\nThe 'd' key was pressed - ";
         cout << "Enter a new drawing config! ---------------------->" << endl;
         currentPolygon.drawConfig = askDrawConfig();
+    }
+    else if (key == 'm')
+    {
+        cout << "\nThe 'm' key was pressed - ";
+        cout << "Enter a new moving config! ---------------------->" << endl;
         currentPolygon.moveConfig = askMoveConfig();
     }
 }
 
 int main()
 {
-    cout << "Enter a new drawing config! ---------------------->" << endl;
+    cout << "\nEnter a new drawing config! ---------------------->" << endl;
     currentPolygon.drawConfig = askDrawConfig();
+    cout << "\nEnter a new moving config! ---------------------->" << endl;
     currentPolygon.moveConfig = askMoveConfig();
 
     int argc = 1;
