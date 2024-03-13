@@ -583,57 +583,6 @@ void transformMine()
         ) ? polygons[polygonIndex].moveConfig.ySpeed : (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::DOWN)
         )? -polygons[polygonIndex].moveConfig.ySpeed : 0;
-        if (colliding)
-        {
-            if(xFrom <= 0)
-            {
-                polygons[polygonIndex].tx += (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
-                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (polygons[polygonIndex].centroidX - xFrom) : (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
-                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (polygons[polygonIndex].centroidX - xFrom) : 0;
-            }
-            else if (xTo >= X_MAX)
-            {
-                polygons[polygonIndex].tx += (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
-                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (xTo - polygons[polygonIndex].centroidX) : (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_SHRINK)
-                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (xTo - polygons[polygonIndex].centroidX) : 0;
-            }
-            if (yFrom <= 0)
-            {
-                polygons[polygonIndex].ty += (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
-                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (polygons[polygonIndex].centroidY - yFrom) : (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
-                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (polygons[polygonIndex].centroidY - yFrom) : 0;
-            }
-            else if (yTo >= Y_MAX)
-            {
-                polygons[polygonIndex].ty += (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_GROWTH)
-                ) ? -(1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (yTo - polygons[polygonIndex].centroidY) : (
-                    polygons[polygonIndex].moveConfig.mode & ((uint)Movement::VERT_SHRINK)
-                ) ? (1 / polygons[polygonIndex].moveConfig.bouncePeriod *
-                        polygons[polygonIndex].moveConfig.shrinkFactor) * 
-                        (yTo - polygons[polygonIndex].centroidY) : 0;
-            }
-        }
 
         polygons[polygonIndex].sx += (
             polygons[polygonIndex].moveConfig.mode & ((uint)Movement::HOR_GROWTH)
